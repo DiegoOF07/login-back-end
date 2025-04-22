@@ -5,6 +5,7 @@ import (
     "net/http"
 
 	"loginapp/handlers"
+    "loginapp/utils"
 
     "github.com/go-chi/chi/v5"
     "github.com/go-chi/chi/v5/middleware"
@@ -26,26 +27,26 @@ func main() {
     r.Use(middleware.Recoverer) // Recupera de panics
     r.Use(configureCORS())      // Aplica nuestra configuración CORS
 
-    // Rutas Públicas (sin autenticación requerida inicialmente)
-    r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-        w.Write([]byte("API de Login v1.0"))
+     // --- Rutas Públicas ---
+     r.Route("/auth", func(r chi.Router) {
+        r.Post("/register", handlers.PostRegisterHandler(db)) // Mover register aquí
+        r.Post("/login", handlers.PostLoginHandler(db))    // Mover login aquí
+   })
+   r.Get("/", func(w http.ResponseWriter, r *http.Request) { /* ... */ })
+
+   // --- Rutas Protegidas ---
+   r.Group(func(r chi.Router) {
+    r.Use(utils.JwtAuthMiddleware(db))
+
+    // Rutas que requieren token válido
+    r.Post("/auth/logout", handlers.PostLogoutHandler(db)) // Mover logout aquí
+    r.Get("/users/profile", handlers.GetUserProfileHandler(db)) // Nueva ruta para perfil
+    // La ruta /users/{userID} podría seguir siendo pública o protegerse también
+    // r.Get("/users/{userID}", getUserHandler(db)) // Ejemplo si se protege
     })
-    r.Post("/register", handlers.PostRegisterHandler(db))
-    r.Post("/login", handlers.PostLoginHandler(db))
-
-    // Ruta para obtener datos de usuario (protegida más tarde con JWT)
-    // Por ahora, cualquiera puede acceder si conoce el ID
-    // r.Get("/users/{userID}", getUserHandler(db))
-
 
     // Iniciar servidor
     port := ":3000"
     log.Printf("Servidor escuchando en puerto %s", port)
     log.Fatal(http.ListenAndServe(port, r))
 }
-
-
-
-
-
-
